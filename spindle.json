@@ -1,0 +1,12 @@
+{
+  "version": "2.3.1",
+  "name": "Persona Add-on Organizer",
+  "identifier": "persona_addon_organizer",
+  "author": "Lumiverse community extension",
+  "description": "Adds groups, ordering, and multi-tag triggers directly to Lumiverse's existing persona add-on editor and chat add-on menu.",
+  "permissions": [],
+  "entry_frontend": "frontend.js",
+  "minimum_lumiverse_version": "0.1.0",
+  "github": "https://github.com/clovergirl99/persona-addon-organizer",
+  "homepage": "https://github.com/clovergirl99/persona-addon-organizer"
+}
