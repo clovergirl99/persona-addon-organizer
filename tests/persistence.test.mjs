@@ -12,7 +12,7 @@ function deferred() {
   return { promise, resolve, reject };
 }
 const clone = structuredClone;
-const initial = () => ({ version: 1, personas: { p: { groups: [{ id: 'old', name: 'Old', addonIds: ['a'] }], ungroupedOrder: ['b'], tagRules: {}, collapsedGroupIds: [] } } });
+const initial = () => ({ version: 1, personas: { p: { groups: [{ id: 'old', name: 'Old', addonIds: ['a'], categoryId: '' }], ungroupedOrder: ['b'], tagRules: {}, collapsedGroupIds: [] } } });
 async function harness() {
   let server = initial();
   const reads = [], writes = [];
@@ -61,7 +61,7 @@ function reorganize(api) {
   api.mutateLayout('p', draft => { draft.ungroupedOrder = draft.ungroupedOrder.filter(id => id !== 'b'); draft.groups[0].addonIds.push('b'); }, 'Add-on moved');
 }
 function assertReorganized(settings) {
-  assert.deepEqual(settings.personas.p.groups, [{ id: 'new', name: 'New', addonIds: ['b'] }]);
+  assert.deepEqual(settings.personas.p.groups, [{ id: 'new', name: 'New', addonIds: ['b'], categoryId: '' }]);
   assert.deepEqual(settings.personas.p.ungroupedOrder, ['a']);
 }
 

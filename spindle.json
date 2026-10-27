@@ -1,5 +1,5 @@
 {
-  "version": "2.3.2",
+  "version": "2.4.0",
   "name": "Persona Add-on Organizer",
   "identifier": "persona_addon_organizer",
   "author": "Lumiverse community extension",
@@ -10,3 +10,4 @@
   "github": "https://github.com/clovergirl99/persona-addon-organizer",
   "homepage": "https://github.com/clovergirl99/persona-addon-organizer"
 }
+

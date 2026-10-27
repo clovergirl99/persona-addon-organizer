@@ -10,11 +10,20 @@ https://github.com/clovergirl99/persona-addon-organizer
 
 Install and enable the extension. Grant its requested permissions if prompted.
 
-The checked-in frontend.js includes the current extension and persistence fixes. spindle.json points to it directly, so no build step is needed. The original 2.3.1 ZIP is retained as an archive. Use the GitHub installer or the 2.3.2 ZIP for the fixed version. Regression tests are in tests/persistence.test.mjs; run them with node --test tests/persistence.test.mjs.
+The checked-in frontend.js includes the current extension and persistence fixes. spindle.json points to it directly, so no build step is needed. The original 2.3.1 ZIP is retained as an archive. Use the GitHub installer or the latest versioned ZIP for the fixed version. Run npm ci and npm test to run the category UI and persistence regression tests.
 
 ---
 
 # Persona Add-on Organizer
+
+## 2.4.0
+
+- Adds categories above existing groups: Category → Group → Add-on.
+- Create, rename, reorder, and delete categories in the Persona Add-Ons editor.
+- Assign each group using its Category selector, or choose a category when creating a group.
+- Chat toolbar picker has All/category filter chips, category counts, and independently collapsible category and group headings.
+- Existing groups start under Uncategorized. Deleting a category preserves its groups and add-ons.
+- Keeps the 2.3.2 persistence fix. Update from GitHub and reload Lumiverse; no uninstall or settings reset is needed.
 
 ## 2.3.2
 
@@ -94,4 +103,6 @@ add-ons and character tags remain owned by Lumiverse.
 Import the ZIP through Lumiverse's extension manager and enable it. Open a
 persona's normal **Add-Ons** editor to create groups, order add-ons, and assign
 trigger tags.
+
+
 

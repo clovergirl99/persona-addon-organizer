@@ -19,6 +19,19 @@ function uniqueStrings(value) {
 }
 function normalizeLayout(value, addonIds) {
   const raw = value && typeof value === "object" ? value : {};
+  const categories = [];
+  const categoryIds = new Set;
+  for (const item of Array.isArray(raw.categories) ? raw.categories : []) {
+    if (!item || typeof item !== "object") continue;
+    let id = typeof item.id === "string" ? item.id.trim() : "";
+    if (!id || id === "__uncategorized__" || categoryIds.has(id)) {
+      let index = categories.length + 1;
+      while (categoryIds.has("category-" + index)) index++;
+      id = "category-" + index;
+    }
+    categoryIds.add(id);
+    categories.push({ id, name: typeof item.name === "string" && item.name.trim() ? item.name.trim() : "Untitled category" });
+  }
   const known = new Set(addonIds);
   const claimed = new Set;
   const groupIds = new Set;
@@ -33,7 +46,7 @@ function normalizeLayout(value, addonIds) {
     groupIds.add(id);
     const addonIdsInGroup = uniqueStrings(candidate.addonIds).filter((addonId) => known.has(addonId) && !claimed.has(addonId));
     addonIdsInGroup.forEach((addonId) => claimed.add(addonId));
-    groups.push({ id, name: typeof candidate.name === "string" && candidate.name.trim() ? candidate.name.trim() : "Untitled group", addonIds: addonIdsInGroup });
+    groups.push({ id, name: typeof candidate.name === "string" && candidate.name.trim() ? candidate.name.trim() : "Untitled group", addonIds: addonIdsInGroup, categoryId: categoryIds.has(candidate.categoryId) ? candidate.categoryId : "" });
   }
   const ungroupedOrder = uniqueStrings(raw.ungroupedOrder).filter((addonId) => known.has(addonId) && !claimed.has(addonId));
   for (const addonId of addonIds) {
@@ -52,7 +65,16 @@ function normalizeLayout(value, addonIds) {
   }
   const validCollapseIds = new Set([...groups.map((group) => group.id), "__ungrouped__"]);
   const collapsedGroupIds = uniqueStrings(raw.collapsedGroupIds).filter((id) => validCollapseIds.has(id));
-  return { groups, ungroupedOrder, tagRules, collapsedGroupIds };
+  const collapsedCategoryIds = uniqueStrings(raw.collapsedCategoryIds).filter(id => categoryIds.has(id) || id === "__uncategorized__");
+  return { categories, groups, ungroupedOrder, tagRules, collapsedGroupIds, collapsedCategoryIds };
+}
+function categorySections(layout) {
+  const sections = layout.categories.map(category => ({ ...category, groups: layout.groups.filter(group => group.categoryId === category.id) }));
+  sections.push({ id: "__uncategorized__", name: "Uncategorized", groups: [
+    ...layout.groups.filter(group => !group.categoryId),
+    { id: "__ungrouped__", name: "Ungrouped", addonIds: layout.ungroupedOrder }
+  ] });
+  return sections;
 }
 function normalizeSettings(value) {
   const raw = value && typeof value === "object" ? value : {};
@@ -84,6 +106,8 @@ var SETTING_KEY = "personaAddonOrganizer:v1";
 var UNGROUPED_KEY = "__ungrouped__";
 var CSS = `
   .pao-editor-tools{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border:1px solid var(--lumiverse-border);border-radius:10px;background:var(--lumiverse-fill-subtle);color:var(--lumiverse-text)}.pao-editor-title{font-size:12px;font-weight:700}.pao-help,.pao-status,.pao-empty{font-size:10.5px;line-height:1.4;color:var(--lumiverse-text-dim)}.pao-add-group{display:flex;gap:6px}.pao-input,.pao-select{min-width:0;border:1px solid var(--lumiverse-border);border-radius:6px;background:var(--lumiverse-bg);color:var(--lumiverse-text);font:inherit;font-size:11px;padding:6px 8px;outline:none}.pao-input{width:100%}.pao-input:focus,.pao-select:focus{border-color:var(--lumiverse-primary)}.pao-btn{border:1px solid var(--lumiverse-border);border-radius:6px;background:var(--lumiverse-bg-elevated);color:var(--lumiverse-text);font:inherit;font-size:10.5px;padding:5px 8px;cursor:pointer}.pao-btn:hover{border-color:var(--lumiverse-primary)}.pao-btn:disabled{opacity:.35;cursor:default}.pao-btn-primary{border-color:var(--lumiverse-primary);background:var(--lumiverse-primary);color:var(--lumiverse-primary-contrast,#fff)}.pao-btn-danger{color:var(--lumiverse-danger,#d66)}.pao-icon{width:25px;height:25px;padding:0}.pao-collapse{font-size:12px;flex:0 0 25px}.pao-bind-section{display:flex;flex-direction:column;gap:6px;margin-top:4px;padding-top:9px;border-top:1px solid var(--lumiverse-border)}.pao-profile-bind{display:flex;flex-direction:column;gap:6px;margin-top:4px;padding-top:9px;border-top:1px solid var(--lumiverse-border)}.pao-character-bind-row{display:flex;align-items:center;gap:7px;color:var(--lumiverse-text-dim);font-size:11px}.pao-character-bind-button{width:28px;height:28px;padding:0;flex:0 0 28px}.pao-character-select{flex:1}.pao-character-bind-label{max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pao-character-bind-button.pao-bound{border-color:var(--lumiverse-primary);color:var(--lumiverse-primary);background:var(--lumiverse-primary-015)}.pao-character-bind-label.pao-bound{color:var(--lumiverse-primary)}.pao-bind-title{font-size:11px;font-weight:700}.pao-bind-add{display:grid;grid-template-columns:minmax(110px,1fr) minmax(110px,1fr) auto;gap:6px}.pao-bind-rules{display:flex;flex-direction:column;gap:4px}.pao-bind-rule{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto;align-items:center;gap:6px;padding:5px 7px;border:1px solid var(--lumiverse-border);border-radius:7px;background:var(--lumiverse-bg)}.pao-bind-value{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10.5px}.pao-bind-arrow{color:var(--lumiverse-text-dim)}.pao-group-heading{display:flex;align-items:center;gap:6px;padding:7px 9px;border-bottom:1px solid var(--lumiverse-border);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--lumiverse-primary)}.pao-group-heading .pao-input{font-weight:700;text-transform:none}.pao-group-heading-actions{display:flex;gap:3px;margin-left:auto}.pao-card-controls{display:flex;flex-direction:column;gap:6px;padding-top:7px;border-top:1px dashed var(--lumiverse-border)}.pao-card-row{display:grid;grid-template-columns:minmax(110px,1fr) auto;gap:6px;align-items:center}.pao-order{display:flex;gap:3px}.pao-rule-label{font-size:10px;color:var(--lumiverse-text-dim)}.pao-chips{display:flex;flex-wrap:wrap;gap:4px}.pao-chip{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--lumiverse-primary);border-radius:999px;color:var(--lumiverse-primary);font-size:10px;padding:3px 6px}.pao-chip button{border:0;background:none;color:inherit;padding:0;cursor:pointer}.pao-tag-add{display:flex;gap:5px}.pao-tag-add .pao-input{padding:5px 7px}.pao-native-section-hidden,.pao-collapsed-item{display:none!important}.pao-chat-group{width:100%;display:flex;align-items:center;gap:7px;padding:7px 10px 3px;border:0;border-top:1px solid var(--lumiverse-border);background:transparent;font:inherit;font-size:10px;font-weight:700;text-align:left;text-transform:uppercase;letter-spacing:.05em;color:var(--lumiverse-primary);cursor:pointer}.pao-chat-arrow{width:12px;text-align:center}
+  .pao-category-manager{display:flex;flex-direction:column;gap:6px;border-bottom:1px solid var(--lumiverse-border);padding-bottom:9px}.pao-category-create{display:flex;gap:6px}.pao-category-row{display:flex;gap:4px;align-items:center}.pao-category-row>.pao-input{flex:1}.pao-group-category{max-width:150px;font-size:10px}.pao-category-filters{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;gap:5px;padding:8px 9px;order:1;background:var(--lumiverse-bg-elevated,var(--lumiverse-bg));border-bottom:1px solid var(--lumiverse-border)}.pao-category-chip{display:inline-flex;align-items:center;gap:4px;max-width:100%;border:1px solid var(--lumiverse-border);border-radius:999px;background:transparent;color:var(--lumiverse-text-dim);font:inherit;font-size:10px;line-height:1.3;padding:4px 8px;cursor:pointer;overflow-wrap:anywhere}.pao-category-chip[aria-pressed="true"]{border-color:var(--lumiverse-primary);background:var(--lumiverse-primary-015,var(--lumiverse-fill-subtle));color:var(--lumiverse-primary)}.pao-chat-category{display:flex;align-items:center;gap:6px;padding:9px 10px 5px;border:0;background:var(--lumiverse-bg-elevated,var(--lumiverse-bg));color:var(--lumiverse-text-dim);font:inherit;font-size:10px;font-weight:700;text-transform:uppercase;text-align:left;cursor:pointer}.pao-category-dot{width:7px;height:7px;border-radius:50%;background:var(--lumiverse-primary);flex:0 0 auto}.pao-category-count{margin-left:auto;font-weight:400}.pao-category-hidden{display:none!important}.pao-chat-group.pao-nested-group{padding-left:20px;font-size:10px}.pao-chat-addon-nested{padding-left:28px!important}
+  .pao-group-heading .pao-input{width:auto;min-width:90px;flex:1 1 110px}.pao-group-category{flex:0 1 140px;min-width:110px}.pao-group-heading-actions{flex-wrap:nowrap}.pao-add-group{flex-wrap:wrap}.pao-add-group .pao-input{flex:1;min-width:90px;width:auto}.pao-add-group .pao-btn,.pao-category-create .pao-btn{white-space:nowrap;flex:0 0 auto}
   @media(max-width:600px){.pao-editor-tools{padding:8px}.pao-bind-add{grid-template-columns:1fr}.pao-card-row{grid-template-columns:1fr}.pao-order{justify-content:flex-start}.pao-group-heading{flex-wrap:wrap}.pao-group-heading-actions{margin-left:0}}
 `;
 function make(tag, className, text) {
@@ -146,6 +170,7 @@ function setup(ctx) {
   const editorControllers = new Map;
   const chatControllers = new Map;
   const profileControllers = new Map;
+  const chatCategoryFilters = new Map;
   const addonsFor = (personaId) => {
     const persona = personas.find((item) => item.id === personaId);
     return persona ? personaAddons(persona, globals) : [];
@@ -226,6 +251,49 @@ function setup(ctx) {
       const top = ctx.dom.inject(body, '<section class="pao-editor-tools"><div class="pao-editor-title">Add-on groups</div><div class="pao-help">Create and order groups here.</div><div class="pao-add-group"><input class="pao-input" placeholder="New group name"><button class="pao-btn pao-btn-primary" type="button">Add group</button></div><div class="pao-bind-section"><div class="pao-bind-title">Add-on tag auto-bind rules</div><div class="pao-help">Each binding is independent. Add as many character tag → add-on pairs as you need.</div><div class="pao-bind-add"><input class="pao-input pao-bind-tag" list="pao-character-tags" placeholder="Character tag"><select class="pao-select pao-bind-addon" aria-label="Add-on"></select><button class="pao-btn pao-bind-button" type="button">Add binding</button></div><div class="pao-bind-rules"></div></div><div class="pao-status">Ready</div></section>', "afterbegin");
       top.style.order = "-2000";
       wrappers.push(top);
+      const manager = make("div", "pao-category-manager");
+      manager.append(make("div", "pao-editor-title", "Categories"), make("div", "pao-help", "Put groups inside categories. The chat picker shows category filters and collapsible headings."));
+      const createRow = make("div", "pao-category-create"), categoryInput = make("input", "pao-input"), addCategory = make("button", "pao-btn pao-btn-primary", "Add category");
+      categoryInput.placeholder = "New category name";
+      categoryInput.setAttribute("aria-label", "New category name");
+      addCategory.type = "button";
+      const createCategory = event => {
+        event.preventDefault(); event.stopPropagation();
+        const name = categoryInput.value.trim();
+        if (!name) { categoryInput.focus(); return; }
+        mutateLayout(persona.id, draft => draft.categories.push({ id: makeId("category"), name }), "Category added");
+        controller.render();
+      };
+      addCategory.addEventListener("click", createCategory);
+      categoryInput.addEventListener("keydown", event => { if (event.key === "Enter") createCategory(event); });
+      createRow.append(categoryInput, addCategory); manager.append(createRow);
+      layout.categories.forEach((category, index) => {
+        const row = make("div", "pao-category-row"), name = make("input", "pao-input"), up = make("button", "pao-btn pao-icon", "↑"), down = make("button", "pao-btn pao-icon", "↓"), remove = make("button", "pao-btn pao-btn-danger", "Delete");
+        name.value = category.name; name.setAttribute("aria-label", "Category name");
+        for (const button of [up, down, remove]) button.type = "button";
+        up.setAttribute("aria-label", "Move category up"); down.setAttribute("aria-label", "Move category down");
+        up.disabled = index === 0; down.disabled = index === layout.categories.length - 1;
+        name.addEventListener("change", () => {
+          mutateLayout(persona.id, draft => { const current = draft.categories.find(item => item.id === category.id); if (current) current.name = name.value.trim() || "Untitled category"; }, "Category renamed"); controller.render();
+        });
+        const reorder = direction => {
+          mutateLayout(persona.id, draft => { const ids = moveItem(draft.categories.map(item => item.id), category.id, direction); draft.categories.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)); }, "Category order saved"); controller.render();
+        };
+        up.addEventListener("click", () => reorder(-1)); down.addEventListener("click", () => reorder(1));
+        remove.addEventListener("click", () => {
+          ctx.ui.showConfirm({ title: "Delete category?", message: "Its groups and add-ons will be kept under Uncategorized.", variant: "danger", confirmLabel: "Delete category", cancelLabel: "Cancel" }).then(({ confirmed }) => {
+            if (!confirmed) return;
+            mutateLayout(persona.id, draft => { draft.categories = draft.categories.filter(item => item.id !== category.id); draft.groups.forEach(group => { if (group.categoryId === category.id) group.categoryId = ""; }); }, "Category deleted"); controller.render();
+          });
+        });
+        row.append(name, up, down, remove); manager.append(row);
+      });
+      const editorTools = top.querySelector(".pao-editor-tools") || top;
+      editorTools.insertBefore(manager, top.querySelector(".pao-add-group"));
+      const newGroupCategory = make("select", "pao-select pao-group-category");
+      newGroupCategory.setAttribute("aria-label", "New group category");
+      for (const category of [{ id: "", name: "Uncategorized" }, ...layout.categories]) { const option = make("option", "", category.name); option.value = category.id; newGroupCategory.append(option); }
+      top.querySelector(".pao-add-group").append(newGroupCategory);
       const groupInput = top.querySelector(".pao-add-group .pao-input"), groupButton = top.querySelector(".pao-add-group .pao-btn-primary"), status = top.querySelector(".pao-status");
       const createGroup = (event) => {
         event?.preventDefault();
@@ -237,7 +305,7 @@ function setup(ctx) {
           return;
         }
         try {
-          mutateLayout(persona.id, (draft) => draft.groups.push({ id: makeId("group"), name, addonIds: [] }), "Group added");
+          mutateLayout(persona.id, (draft) => draft.groups.push({ id: makeId("group"), name, addonIds: [], categoryId: newGroupCategory.value }), "Group added");
           controller.render();
         } catch (error) {
           status.textContent = error instanceof Error ? `Could not add group: ${error.message}` : "Could not add group.";
@@ -313,7 +381,7 @@ function setup(ctx) {
         if (child.matches('[class*="_sectionAddRow_"]'))
           child.style.order = "9000";
       }
-      const sections = [...layout.groups.map((group) => ({ id: group.id, collapseKey: group.id, name: group.name, ids: group.addonIds })), { id: "", collapseKey: UNGROUPED_KEY, name: "Ungrouped", ids: layout.ungroupedOrder }];
+      const sections = [...layout.groups.map((group) => ({ id: group.id, collapseKey: group.id, name: group.name, ids: group.addonIds, categoryId: group.categoryId })), { id: "", collapseKey: UNGROUPED_KEY, name: "Ungrouped", ids: layout.ungroupedOrder }];
       sections.forEach((section, sectionIndex) => {
         const collapsed = layout.collapsedGroupIds.includes(section.collapseKey), heading = ctx.dom.inject(body, '<div class="pao-group-heading"><button class="pao-btn pao-icon pao-collapse" type="button" aria-label="Toggle group"></button><input class="pao-input" aria-label="Group name"><span class="pao-group-heading-actions"><button class="pao-btn pao-icon pao-up" type="button">↑</button><button class="pao-btn pao-icon pao-down" type="button">↓</button><button class="pao-btn pao-btn-danger pao-delete" type="button">Delete</button></span></div>', "beforeend");
         heading.style.order = String(-1500 + sectionIndex * 100);
@@ -328,6 +396,15 @@ function setup(ctx) {
           }, collapsed ? "Group opened" : "Group closed");
           controller.render();
         });
+        if (section.id && layout.categories.length) {
+          const selectCategory = make("select", "pao-select pao-group-category");
+          selectCategory.setAttribute("aria-label", "Category for " + section.name);
+          for (const category of [{ id: "", name: "Uncategorized" }, ...layout.categories]) { const option = make("option", "", category.name); option.value = category.id; selectCategory.append(option); }
+          selectCategory.value = section.categoryId || "";
+          selectCategory.addEventListener("change", () => { mutateLayout(persona.id, draft => { const group = draft.groups.find(item => item.id === section.id); if (group) group.categoryId = selectCategory.value; }, "Group category saved"); controller.render(); });
+          const groupHeading = heading.querySelector(".pao-group-heading") || heading;
+          groupHeading.insertBefore(selectCategory, heading.querySelector(".pao-group-heading-actions"));
+        }
         nameInput.value = section.name;
         nameInput.disabled = !section.id;
         up.disabled = !section.id || sectionIndex === 0;
@@ -628,7 +705,7 @@ function setup(ctx) {
     for (const addon of scored.views)
       labelQueues.set(addon.label, [...labelQueues.get(addon.label) ?? [], addon]);
     const pairs = buttons.map((button) => ({ button, addon: labelQueues.get(addonLabelFromChatButton(button))?.shift() })).filter((pair) => !!pair.addon);
-    const signature = `${scored.persona.id}|${pairs.map((pair) => pair.addon.id).join("|")}|${JSON.stringify(layout.groups)}|${layout.ungroupedOrder.join(",")}|${layout.collapsedGroupIds.join(",")}`, existing = chatControllers.get(popover);
+    const signature = `${scored.persona.id}|${pairs.map((pair) => pair.addon.id).join("|")}|${JSON.stringify(layout.groups)}|${JSON.stringify(layout.categories)}|${layout.collapsedCategoryIds.join(",")}|${layout.ungroupedOrder.join(",")}|${layout.collapsedGroupIds.join(",")}`, existing = chatControllers.get(popover);
     if (existing) {
       if (existing.signature !== signature) {
         existing.destroy();
@@ -649,31 +726,70 @@ function setup(ctx) {
       for (const { button } of pairs)
         button.classList.remove("pao-collapsed-item");
       popover.querySelectorAll(':scope > [class*="_popDivider_"],:scope > [class*="_quickSetName_"]').forEach((element) => element.classList.add("pao-native-section-hidden"));
-      const sections = [...currentLayout.groups.map((group) => ({ collapseKey: group.id, name: group.name, ids: group.addonIds })), { collapseKey: UNGROUPED_KEY, name: "Ungrouped", ids: currentLayout.ungroupedOrder }];
-      sections.forEach((section, index) => {
-        const ids = section.ids.filter((id) => byId.has(id));
-        if (!ids.length)
-          return;
-        const collapsed = currentLayout.collapsedGroupIds.includes(section.collapseKey), heading = ctx.dom.inject(popover, '<button class="pao-chat-group" type="button"><span class="pao-chat-arrow"></span><span class="pao-chat-name"></span></button>', "beforeend"), button = heading.querySelector(".pao-chat-group");
-        heading.style.order = String(100 + index * 100);
-        wrappers.push(heading);
-        button.querySelector(".pao-chat-arrow").textContent = collapsed ? "▸" : "▾";
-        button.querySelector(".pao-chat-name").textContent = section.name;
-        button.setAttribute("aria-expanded", String(!collapsed));
-        button.addEventListener("click", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          mutateLayout(scored.persona.id, (draft) => {
-            draft.collapsedGroupIds = collapsed ? draft.collapsedGroupIds.filter((id) => id !== section.collapseKey) : [...draft.collapsedGroupIds, section.collapseKey];
-          }, collapsed ? "Group opened" : "Group closed");
-          controller.render();
-        });
-        ids.forEach((id, itemIndex) => {
-          const row = byId.get(id);
-          row.style.order = String(101 + index * 100 + itemIndex);
-          row.classList.toggle("pao-collapsed-item", collapsed);
-        });
-      });
+      const categories = categorySections(currentLayout);
+      let selected = chatCategoryFilters.get(scored.persona.id) || "";
+      if (selected && !categories.some(category => category.id === selected)) selected = "";
+      chatCategoryFilters.set(scored.persona.id, selected);
+      const countFor = category => category.groups.reduce((count, group) => count + group.addonIds.filter(id => byId.has(id)).length, 0);
+      for (const { button } of pairs) {
+        button.classList.add("pao-category-hidden");
+        button.classList.toggle("pao-chat-addon-nested", currentLayout.categories.length > 0);
+      }
+      if (currentLayout.categories.length) {
+        const filtersHost = ctx.dom.inject(popover, '<div class="pao-category-filters" role="group" aria-label="Filter add-ons by category"></div>', "beforeend");
+        const filters = filtersHost.querySelector(".pao-category-filters") || filtersHost;
+        filtersHost.style.order = "1";
+        filtersHost.style.position = "sticky"; filtersHost.style.top = "0"; filtersHost.style.zIndex = "2";
+        wrappers.push(filtersHost);
+        for (const category of [{ id: "", name: "All" }, ...categories]) {
+          const count = category.id ? countFor(category) : pairs.length;
+          if (category.id === "__uncategorized__" && !count) continue;
+          const chip = make("button", "pao-category-chip", category.name + " (" + count + ")");
+          chip.type = "button"; chip.setAttribute("aria-pressed", String(selected === category.id));
+          chip.addEventListener("click", event => { event.preventDefault(); event.stopPropagation(); chatCategoryFilters.set(scored.persona.id, category.id); controller.render(); });
+          filters.append(chip);
+        }
+      }
+      let order = 100;
+      for (const category of categories) {
+        if (selected && selected !== category.id) continue;
+        const groups = category.groups.map(group => ({ ...group, ids: group.addonIds.filter(id => byId.has(id)) })).filter(group => group.ids.length);
+        if (!groups.length) continue;
+        const categoryCollapsed = currentLayout.categories.length > 0 && currentLayout.collapsedCategoryIds.includes(category.id);
+        if (currentLayout.categories.length) {
+          const wrapper = ctx.dom.inject(popover, '<div class="pao-category-heading"><button class="pao-chat-category" type="button"><span class="pao-category-dot"></span><span class="pao-category-arrow"></span><span class="pao-category-name"></span><span class="pao-category-count"></span></button></div>', "beforeend");
+          wrapper.style.order = String(order++); wrappers.push(wrapper);
+          const button = wrapper.querySelector("button"); button.style.width = "100%";
+          button.querySelector(".pao-category-arrow").textContent = categoryCollapsed ? "▸" : "▾";
+          button.querySelector(".pao-category-name").textContent = category.name;
+          button.querySelector(".pao-category-count").textContent = String(countFor(category));
+          button.setAttribute("aria-expanded", String(!categoryCollapsed));
+          button.addEventListener("click", event => {
+            event.preventDefault(); event.stopPropagation();
+            mutateLayout(scored.persona.id, draft => { draft.collapsedCategoryIds = categoryCollapsed ? draft.collapsedCategoryIds.filter(id => id !== category.id) : [...draft.collapsedCategoryIds, category.id]; }, categoryCollapsed ? "Category opened" : "Category closed"); controller.render();
+          });
+        }
+        for (const group of groups) {
+          const collapsed = currentLayout.collapsedGroupIds.includes(group.id);
+          const heading = ctx.dom.inject(popover, '<div class="pao-group-wrapper"><button class="pao-chat-group" type="button"><span class="pao-chat-arrow"></span><span class="pao-chat-name"></span></button></div>', "beforeend");
+          heading.style.order = String(order++); wrappers.push(heading);
+          heading.classList.toggle("pao-category-hidden", categoryCollapsed);
+          const button = heading.querySelector("button");
+          button.classList.toggle("pao-nested-group", currentLayout.categories.length > 0);
+          button.querySelector(".pao-chat-arrow").textContent = collapsed ? "▸" : "▾";
+          button.querySelector(".pao-chat-name").textContent = group.name;
+          button.setAttribute("aria-expanded", String(!collapsed));
+          button.addEventListener("click", event => {
+            event.preventDefault(); event.stopPropagation();
+            mutateLayout(scored.persona.id, draft => { draft.collapsedGroupIds = collapsed ? draft.collapsedGroupIds.filter(id => id !== group.id) : [...draft.collapsedGroupIds, group.id]; }, collapsed ? "Group opened" : "Group closed"); controller.render();
+          });
+          for (const id of group.ids) {
+            const row = byId.get(id); row.style.order = String(order++);
+            row.classList.remove("pao-category-hidden");
+            row.classList.toggle("pao-collapsed-item", categoryCollapsed || collapsed);
+          }
+        }
+      }
     }, destroy() {
       for (const wrapper of wrappers.splice(0)) {
         try {
@@ -684,7 +800,7 @@ function setup(ctx) {
       }
       for (const { button } of pairs) {
         button.style.removeProperty("order");
-        button.classList.remove("pao-collapsed-item");
+        button.classList.remove("pao-collapsed-item", "pao-category-hidden", "pao-chat-addon-nested");
       }
       popover.querySelectorAll(".pao-native-section-hidden").forEach((element) => element.classList.remove("pao-native-section-hidden"));
     } };
@@ -842,3 +958,5 @@ function setup(ctx) {
 export {
   setup
 };
+
+
