@@ -10,11 +10,20 @@ https://github.com/clovergirl99/persona-addon-organizer
 
 Install and enable the extension. Grant its requested permissions if prompted.
 
-The checked-in frontend.js is the original compiled extension, unchanged. spindle.json points to it directly, so no build step is needed. The original ZIP is included with the original documentation and any available source files and tests.
+The checked-in frontend.js includes the current extension and persistence fixes. spindle.json points to it directly, so no build step is needed. The original 2.3.1 ZIP is retained as an archive. Use the GitHub installer or the 2.3.2 ZIP for the fixed version. Regression tests are in tests/persistence.test.mjs; run them with node --test tests/persistence.test.mjs.
 
 ---
 
 # Persona Add-on Organizer
+
+## 2.3.2
+
+- Prevents background settings refreshes from undoing group deletion, creation, and add-on moves while saves are queued.
+- Ignores responses from superseded refreshes.
+- Keeps the current layout when a settings refresh fails or a save has not succeeded.
+- Includes regression tests for overlapping reads and writes.
+
+Update this extension from its GitHub repository in Lumiverse, then reload or toggle it off and on. The identifier and settings key are unchanged, so saved layouts are retained.
 
 ## 2.3.1
 

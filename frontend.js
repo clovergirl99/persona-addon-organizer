@@ -141,6 +141,8 @@ function setup(ctx) {
   const disposers = [ctx.dom.addStyle(CSS)];
   let settings = structuredClone(EMPTY_SETTINGS), personas = [], globals = [], characters = [], characterTags = [], activePersonaId = "", characterPersonaBindings = {};
   let saveChain = Promise.resolve(), automationBusy = false, lastAutomationSignature = "", scanQueued = false, destroyed = false;
+  // Local edits own the layout until their newest queued write succeeds.
+  let settingsRevision = 0, settingsDirty = false, refreshRevision = 0;
   const editorControllers = new Map;
   const chatControllers = new Map;
   const profileControllers = new Map;
@@ -155,7 +157,11 @@ function setup(ctx) {
   };
   const saveSettings = (message) => {
     const snapshot = structuredClone(settings);
+    const revision = ++settingsRevision;
+    settingsDirty = true;
     saveChain = saveChain.then(() => fetchJson(`/api/v1/settings/${encodeURIComponent(SETTING_KEY)}`, { method: "PUT", body: JSON.stringify({ value: snapshot }) })).then(() => {
+      if (revision === settingsRevision)
+        settingsDirty = false;
       lastAutomationSignature = "";
       document.dispatchEvent(new CustomEvent("pao:settings-saved", { detail: message }));
       queueScan();
@@ -780,15 +786,23 @@ function setup(ctx) {
     }
   }
   const refreshData = async () => {
-    personas = await listAll("/api/v1/personas");
+    const refresh = ++refreshRevision;
+    const revision = settingsRevision;
+    const mayReplaceSettings = !settingsDirty;
+    const nextPersonas = await listAll("/api/v1/personas");
     const [globalResult, charactersResult, tagResult, settingResult, activePersonaResult, characterBindingsResult] = await Promise.allSettled([listAll("/api/v1/global-addons"), listAll("/api/v1/characters"), fetchJson("/api/v1/characters/tags"), fetchJson(`/api/v1/settings/${encodeURIComponent(SETTING_KEY)}`), fetchJson("/api/v1/settings/activePersonaId"), fetchJson("/api/v1/settings/characterPersonaBindings")]);
+    // A slow earlier refresh must never replace a newer refresh or local edit.
+    if (destroyed || refresh !== refreshRevision)
+      return;
+    personas = nextPersonas;
     if (globalResult.status === "fulfilled")
       globals = globalResult.value;
     if (charactersResult.status === "fulfilled")
       characters = charactersResult.value;
     if (tagResult.status === "fulfilled")
       characterTags = Array.isArray(tagResult.value) ? tagResult.value : tagResult.value?.data ?? [];
-    settings = settingResult.status === "fulfilled" ? normalizeSettings(settingResult.value.value) : structuredClone(EMPTY_SETTINGS);
+    if (mayReplaceSettings && !settingsDirty && revision === settingsRevision && settingResult.status === "fulfilled")
+      settings = normalizeSettings(settingResult.value.value);
     activePersonaId = activePersonaResult.status === "fulfilled" && typeof activePersonaResult.value.value === "string" ? activePersonaResult.value.value : "";
     characterPersonaBindings = characterBindingsResult.status === "fulfilled" && characterBindingsResult.value.value && typeof characterBindingsResult.value.value === "object" ? characterBindingsResult.value.value : {};
     queueScan();
