@@ -118,10 +118,6 @@ function make(tag, className, text) {
     element.textContent = text;
   return element;
 }
-function makeId(prefix) {
-  const uuid = globalThis.crypto?.randomUUID?.();
-  return uuid ? `${prefix}-${uuid}` : `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
 async function fetchJson(path, init) {
   const response = await fetch(path, { credentials: "same-origin", headers: { Accept: "application/json", ...init?.body ? { "Content-Type": "application/json" } : {} }, ...init });
   if (!response.ok)
@@ -162,6 +158,7 @@ function addonLabelFromChatButton(button) {
   return spans.at(-1)?.textContent?.trim() || "";
 }
 function setup(ctx) {
+  const makeId = (prefix) => `${prefix}-${ctx.uuid.v4()}`;
   const disposers = [ctx.dom.addStyle(CSS)];
   let settings = structuredClone(EMPTY_SETTINGS), personas = [], globals = [], characters = [], characterTags = [], activePersonaId = "", characterPersonaBindings = {};
   let saveChain = Promise.resolve(), automationBusy = false, lastAutomationSignature = "", scanQueued = false, destroyed = false;
@@ -958,5 +955,6 @@ function setup(ctx) {
 export {
   setup
 };
+
 
 

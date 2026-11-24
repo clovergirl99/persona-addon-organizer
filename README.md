@@ -16,6 +16,11 @@ The checked-in frontend.js includes the current extension and persistence fixes.
 
 # Persona Add-on Organizer
 
+## 2.4.1
+
+- Uses Lumiverse's `ctx.uuid.v4()` for new group and category IDs, fixing the blocked-capability error after the Lumiverse update and supporting HTTP/LAN access.
+- Existing categories, groups, add-ons and saved IDs are preserved. Update from GitHub and reload Lumiverse; no settings reset is needed.
+
 ## 2.4.0
 
 - Adds categories above existing groups: Category → Group → Add-on.
@@ -103,6 +108,7 @@ add-ons and character tags remain owned by Lumiverse.
 Import the ZIP through Lumiverse's extension manager and enable it. Open a
 persona's normal **Add-Ons** editor to create groups, order add-ons, and assign
 trigger tags.
+
 
 
 

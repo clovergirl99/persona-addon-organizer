@@ -1,6 +1,6 @@
 {
   "name": "persona-addon-organizer",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,4 +10,3 @@
     "linkedom": "0.18.14"
   }
 }
-

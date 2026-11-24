@@ -30,12 +30,14 @@ async function harness(initial = base()) {
     const main = document.createElement('span'); main.className = '_personaMain_test'; const name = document.createElement('span'); name.textContent = label; main.append(name); row.append(main); popover.append(row);
   });
   let server = structuredClone(initial);
+  let uuidCalls = 0;
   const ctx = { dom: {
     addStyle: () => () => {},
     inject(target, html, position) { const host = document.createElement('div'); host.dataset.spindleExt = 'persona_addon_organizer'; host.innerHTML = html; target.insertAdjacentElement(position, host); return host; },
     uninject: element => element.remove()
-  }, ui: { showConfirm: async () => ({ confirmed: true }) } };
+  }, uuid: { v4: () => `00000000-0000-4000-8000-${String(++uuidCalls).padStart(12, '0')}` }, ui: { showConfirm: async () => ({ confirmed: true }) } };
   const context = { document, window, console, structuredClone, requestAnimationFrame: () => {}, CustomEvent: window.CustomEvent,
+    crypto: new Proxy({}, { get() { throw new Error('Browser crypto is unavailable on this HTTP/LAN host'); } }),
     fetch: async (path, options = {}) => {
       let value;
       if (path.includes('personaAddonOrganizer')) { if (options.method === 'PUT') server = JSON.parse(options.body).value; value = { value: server }; }
@@ -96,6 +98,7 @@ test('editor creates categories and moves existing folders without moving or dro
   h.editor.querySelector('[aria-label="New category name"]').value = 'Story';
   h.click([...h.editor.querySelectorAll('.pao-category-manager button')].find(item => item.textContent === 'Add category'));
   const category = h.api.layoutFor('p').categories.find(item => item.name === 'Story'); assert.ok(category);
+  assert.equal(category.id, 'category-00000000-0000-4000-8000-000000000001');
   h.change(h.editor.querySelector('[aria-label="Category for Ages"]'), category.id);
   assert.deepEqual(structuredClone(h.api.layoutFor('p').groups.find(item => item.id === 'ages').addonIds), ['a']);
   assert.equal(h.api.layoutFor('p').groups.find(item => item.id === 'ages').categoryId, category.id);
@@ -135,10 +138,12 @@ test('new groups use the chosen category and category order is reflected in tool
   h.click(h.editor.querySelector('.pao-add-group .pao-btn-primary'));
   const layout = h.api.layoutFor('p');
   assert.equal(layout.groups.at(-1).name, 'New folder');
+  assert.equal(layout.groups.at(-1).id, 'group-00000000-0000-4000-8000-000000000001');
   assert.equal(layout.groups.at(-1).categoryId, 'appearance');
   h.api.mountChatPopover(h.popover);
   assert.deepEqual([...h.popover.querySelectorAll('.pao-category-chip')].slice(0, 3).map(item => item.textContent), ['All (5)', 'Appearance (1)', 'Basics (2)']);
 });
 
 export { harness };
+
 
